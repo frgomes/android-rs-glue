@@ -2,3 +2,18 @@ target/
 .idea
 *.iml
 CMakeFiles
+
+**/*.zip
+**/*.tar.gz
+android-ndk-linux/jdk8*/
+android-ndk-linux/android-ndk-*/
+android-ndk-linux/android-sdk-linux-*/
+
+# Emacs
+*~
+**/#*
+**/.#*
+
+# VSCode
+**/.vscode
+**/.editorconfig
