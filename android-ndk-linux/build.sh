@@ -1,7 +1,13 @@
-#!/bin/bash
+#!/bin/bash -x
 
-NDK_RELEASE=21d
-SDK_TOOLS_RELEASE=4333796
+###################################################
+## DO NOT CHANGE ANY DEFAULT VALUES IN THIS FILE. #
+## Define environment variables like this:        #
+##   $ source ../versions.sh                      #
+###################################################
+DOCKERHUB_LOGIN=${DOCKERHUB_LOGIN:-notfl3}
+NDK_RELEASE=${NDK_RELEASE:-21d}
+SDK_TOOLS_RELEASE=${SDK_TOOLS_RELEASE:-4333796}
 
 function download_jdk8 {
     if [ ! -d jdk8u265-b01-jre ] ;then
@@ -34,4 +40,5 @@ function download_ndk {
 download_jdk8 && download_sdk_tools && download_ndk && \
     docker build . --build-arg NDK_RELEASE=${NDK_RELEASE} \
                    --build-arg SDK_TOOLS_RELEASE=${SDK_TOOLS_RELEASE} \
-                   --tag notfl3/android-ndk-linux:${NDK_RELEASE}.${SDK_TOOLS_RELEASE}
+                   --tag ${DOCKERHUB_LOGIN}/android-ndk-linux:${NDK_RELEASE}.${SDK_TOOLS_RELEASE} \
+                   --tag ${DOCKERHUB_LOGIN}/android-ndk-linux:latest

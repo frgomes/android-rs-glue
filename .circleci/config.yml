@@ -1,26 +1,34 @@
 version: 2
 jobs:
   build-and-test:
-    environment:
-      IMAGE_NAME: tomaka/cargo-apk
     docker:
       - image: docker:stable
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: Build image
-          command: docker build -t $IMAGE_NAME:latest .
+          name: Load version numbers
+          command: source versions.sh
       - run:
-          name: Archive image
-          command: docker save -o image.tar $IMAGE_NAME
+          name: Build android-ndk-linux image
+          command: |
+            pushd android-ndk-linux
+            ./build.sh
+            popd
+      - run:
+          name: Build cargo-apk image
+          command: ./build.sh
+      - run:
+          name: Archive images
+          command: |
+            docker save -o android-ndk-linux.tar ${DOCKERHUB_LOGIN}/android-ndk-linux:${NDK_RELEASE}.${SDK_TOOLS_RELEASE}
+            docker save -o cargo-apk.tar         ${DOCKERHUB_LOGIN}/cargo-apk:${CARGO_APK_VERSION}
       - persist_to_workspace:
               root: .
               paths:
-                - ./image.tar
+                - ./android-ndk-linux.tar
+                - ./cargo-apk.tar
   publish-docker-image:
-    environment:
-      IMAGE_NAME: tomaka/cargo-apk
     docker:
       - image: docker:stable
     steps:
@@ -28,13 +36,16 @@ jobs:
           at: /tmp/workspace
       - setup_remote_docker
       - run:
-          name: Load image
-          command: docker load -i /tmp/workspace/image.tar
+          name: Load images
+          command: |
+            docker load -i /tmp/workspace/android-ndk-linux.tar
+            docker load -i /tmp/workspace/cargo-apk.tar
       - run:
           name: Publish final image
           command: |
             echo "$DOCKERHUB_PASSWORD" | docker login -u $DOCKERHUB_LOGIN --password-stdin
-            docker push $IMAGE_NAME
+            docker push ${DOCKERHUB_LOGIN}/android-ndk-linux:${NDK_RELEASE}.${SDK_TOOLS_RELEASE}
+            docker push ${DOCKERHUB_LOGIN}/cargo-apk:${CARGO_APK_VERSION}
   publish-crates-io:
     working_directory: ~/android-rs-glue
     docker:
