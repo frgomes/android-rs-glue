@@ -7,6 +7,7 @@ RUN apt update && apt install -qy x11-apps && rm -rf /var/lib/apt/lists/*
 COPY jdk8u265-b01-jre /opt/jdk8u265-b01-jre/
 ENV JAVA_HOME=/opt/jdk8u265-b01-jre
 ENV PATH="${PATH}:/opt/jdk8u265-b01-jre/bin"
+
  
  ##
 ## Receive configurations from build process
@@ -37,24 +38,37 @@ RUN sdkmanager --list && \
     sdkmanager --update | grep -v = || true
 
 # Install Android NDK
-COPY android-ndk-r${NDK_RELEASE} ${NDK_HOME}/
 ENV NDK_HOME=/usr/local/android-ndk-r${NDK_RELEASE}
+COPY android-ndk-r${NDK_RELEASE} ${NDK_HOME}/
+
 
  ##
 ## Receive configurations from build process
 ##
-## List of devices to be installed, separated by commas
-ARG SDK_DEVICES="Nexus 6P,Pixel XL"
+## List of devices to be installed, separated by commas.
+## Each definition is made of an arbitrary name and the device id, separated by colons.
+## Whitespaces and punctuation are supressed.
+ARG SDK_DEVICES="Nexus6P:11,PixelXL:19"
 
-## RUN HWPLATFORM=$(uname -m | tr [:upper:] [:lower:]) ; \
-##     echo ${SDK_DEVICES} | tr ',' '\n' | while read device ;do \
-##       for api in ${SDK_PLATFORMS} ;do \
-##         major=$(echo ${api} | cut -d. -f1) ; \
-##         avdmanager create avd \
-##           --name "${device} / ${major}" \
-##           --device "${device}" \
-##           --force \
-##           --abi google_apis/${HWPLATFORM} \
-##           --package \'system-images;android-${major};google_apis;${HWPLATFORM}\' ; \
-##       done
-##     done
+RUN HWPLATFORM=$(uname -m | tr [:upper:] [:lower:]) ; \
+      for api in "${SDK_PLATFORMS}" ;do \
+        major=$(echo "${api}" | cut -d. -f1) ; \
+        echo sdkmanager "system-images;android-${major};google_apis;${HWPLATFORM}" ; \
+        yes | sdkmanager "system-images;android-${major};google_apis;${HWPLATFORM}" | grep -v = || true ; \
+      done
+RUN yes | sdkmanager --licenses > /dev/null
+
+RUN HWPLATFORM=$(uname -m | tr [:upper:] [:lower:]) ; \
+    echo "${SDK_DEVICES}" | tr ',' '\n' | while read line ;do \
+      name=$(echo "${line}" | cut -d: -f1) ; \
+      id=$(echo "${line}" | cut -d: -f2) ; \
+      name=$(echo "${name}" | tr -d [:punct:] | tr -d [:space:]) ; \
+      for api in "${SDK_PLATFORMS}" ;do \
+        major=$(echo "${api}" | cut -d. -f1) ; \
+        avdmanager create avd --name "${name}_${major}" --device "${id}" --force \
+                              --package "system-images;android-${major};google_apis;${HWPLATFORM}" ; \
+      done ; \
+    done ; \
+    avdmanager list avd
+
+##TODO: https://github.com/voidxv/avd_creation_script
